@@ -129,9 +129,9 @@ class InvoiceItems(models.Model):
     material_type = models.ForeignKey(MaterialType)
     slum = models.ForeignKey(Slum)
     household_numbers = JSONField()
-    phase = models.CharField(max_length=2, choices = PHASE)
+    phase = models.CharField(choices = PHASE,max_length=2,null=True, blank=True)
     quantity = models.FloatField(default = 0)
-    unit = models.CharField(max_length=100,choices = UNITS)
+    unit = models.CharField(max_length=100,choices = UNITS,null=True, blank=True)
     rate = models.FloatField(default = 0)
     tax = models.FloatField(default = 0)
     total = models.FloatField(default = 0)
@@ -208,6 +208,7 @@ class ToiletConstruction(models.Model):
     use_of_toilet = models.DateField(null=True, blank=True)
     toilet_connected_to = models.DateField(null=True, blank=True)
     factsheet_done = models.DateField(null=True, blank=True)
+    materials_delivered = JSONField(null=True, blank=True)
 
     class Meta:
         permissions = (
@@ -369,6 +370,7 @@ def update_status(sender ,instance, **kwargs):
             
         if instance.agreement_cancelled :
             instance.status = STATUS_CHOICES[1][0]#agreement cancelled
+            instance.materials_delivered = []
 
     
 

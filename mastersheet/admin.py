@@ -48,19 +48,25 @@ class InvoiceItemsInline(admin.TabularInline):
         js = ['js/copy_above.js']
 
     def copy_above(self, obj):
-        print 'hello there'
+        # print 'hello there'
         return '<button type="button" onclick = "copy_this(this)" class="b glyphicon glyphicon-copy" ></button>'
     copy_above.allow_tags=True
 
     def save_formset(self, request, form, formset, change):
-        print 'Hello'
+        # print 'Hello, in save formset for invoiceItems'
         super(InvoiceItemsInline, self).save_formset(self, request, form, formset, change)
+
         if formset.model == InvoiceItems:
             obj = formset.instance
+            print "deleting object"
             if obj.reformat:
+                print "deleting object"
+                print obj.household_numbers
                 obj.delete()
                 # creating new objects
             obj.save()
+            
+            #update_materials_delivered()
 
     exclude = ('created_by','created_on','modified_by','modified_on',)
 
@@ -77,16 +83,47 @@ class InvoiceAdmin(admin.ModelAdmin):
     class Media:
         js = ['js/calculate_total_invoice.js']
 
-    def save_related(self,request, form, formset, change):        
+    def save_related(self,request, form, formset, change):
+        for i in formset[0]:
+            if i.cleaned_data['DELETE']:
+                for house in i.cleaned_data['household_numbers']:
+                    try:
+                        tc_for_house = ToiletConstruction.objects.get(household_number=house, slum__id = i.cleaned_data['slum'].id)
+                        if i.cleaned_data['material_type'].id in tc_for_house.materials_delivered:
+                            tc_for_house.materials_delivered.remove(i.cleaned_data['material_type'].id)
+                            tc_for_house.save()
+                    except Exception as e:
+                        print e
+
         inst = formset[0].save(commit = False)
-        print inst
         for instance in inst:
             instance.created_by = request.user
             instance.modified_by = request.user
             instance.save()
+            for house in instance.household_numbers:
+                
+
+                tmp = []
+                try:
+                    tc_for_house = ToiletConstruction.objects.get(household_number=house, slum__id = instance.slum.id)
+                    if tc_for_house.materials_delivered == None:
+                        
+                        tmp.append(instance.material_type.id)
+                        tc_for_house.materials_delivered = tmp
+                        tc_for_house.save()
+                    else:
+                        if instance.material_type.id not in tc_for_house.materials_delivered:
+                            tc_for_house.materials_delivered.append(instance.material_type.id)
+                            tc_for_house.save()
+                except Exception as e:
+                    print e
+
         super(InvoiceAdmin, self).save_related(request, form, formset, change)
     
     def save_model(self, request, obj, form, change):
+        # print form.fields
+        if 'DELETE' in form.fields and form.cleaned_data.get('DELETE'):
+            print form.cleaned_data.get('DELETE'), obj
         user = User.objects.get(pk = request.user.id)
         if not obj.pk :
             obj.created_by = user
@@ -165,6 +202,7 @@ class ToiletConstructionAdmin(BaseAdmin):
     search_fields = ['slum__name','household_number','agreement_date','agreement_cancelled','status']
     ordering = ['slum__name','household_number']
     raw_id_fields = ['slum']
+    #exclude = ('materials_delivered')
     form = ToiletConstructionForm
 
     def slum_name(self, obj):

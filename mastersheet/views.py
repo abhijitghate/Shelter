@@ -1159,6 +1159,7 @@ def give_report_table_numbers_accounts(request):
     query_on = {'phase_one_material_date': 'total_p1',
                 'phase_two_material_date': 'total_p2', 
                 'phase_three_material_date': 'total_p3',
+                'materials_delivered':'materials_delivered'
                 }
 
 
@@ -1200,11 +1201,11 @@ def give_report_table_numbers_accounts(request):
 
         for level_id, data in tc.items():
             report_table_accounts_data[level_id].update(data)
-
+    # print report_table_accounts_data
     filter_field ={'slum__id__in':keys, 'invoice__invoice_date__range':[start_date,end_date]}
 
     invoiceItems = InvoiceItems.objects.filter(**filter_field )\
-                    .annotate(**level_data[tag]).values('level','level_id','city_name','phase','household_numbers','material_type__name')\
+                    .annotate(**level_data[tag]).values('level','level_id','city_name','phase','household_numbers','material_type__name','material_type__id')\
                     .order_by('city_name')
 
 
@@ -1224,11 +1225,21 @@ def give_report_table_numbers_accounts(request):
             temp_material_type_count_dict = defaultdict(int)
             for material_type_name, material_type_list in values_list_temp:
                 material_type_list_temp = list(material_type_list)
+                # for k,v in  level_data[tag].iteritems():
+                #     print level_data[tag][k],type(v)
+                # print material_type_list_temp
+                # for house in json.loads(material_type_list_temp[0]['household_numbers']):
+                #     try:
+                #         if material_type_list_temp[0]['material_type__id'] in ToiletConstruction.objects.get(household_number = house, **level_data[tag] = material_type_list_temp['level_id']):
+                #             temp_material_type_count_dict[material_type_name] +=1
+                #     except Exception as e:
+                #         print e
+                # print ToiletConstruction.objects.get(household_number = house, level_data[tag][level_id] = material_type_list_temp['level_id'])
                 if len(material_type_list_temp) > 0:
                     temp_material_type_count_dict[material_type_name] = len(json.loads(material_type_list_temp[0]['household_numbers']))
             str_tmp = ''
             for k,v in temp_material_type_count_dict.items():
-                str_tmp = str_tmp + k +':'+str(v)+ '\n'
+                str_tmp = str_tmp + k +':'+str(v)+ '<br/>'
             report_table_accounts_data[level].update({'total_p'+str(key_phase)+'_accounts':str_tmp})
 
 
